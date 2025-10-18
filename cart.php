@@ -228,7 +228,7 @@ include 'includes/header.php';
                     </div>
                     
                     <div class="space-y-3">
-                        <a href="checkout.php" 
+                        <a href="<?php echo SITE_URL; ?>/checkout.php" 
                            class="w-full bg-primary text-white py-3 px-4 rounded-lg font-semibold hover:bg-green-600 transition-colors text-center block">
                             <i class="fas fa-credit-card mr-2"></i>Thanh toán
                         </a>

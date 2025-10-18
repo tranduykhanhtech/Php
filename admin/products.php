@@ -5,36 +5,41 @@ requireAdmin();
 
 $page_title = 'Quản lý sản phẩm';
 
-// Helper: upload local file to Cloudinary (returns secure_url or false)
-function upload_to_cloudinary($filePath, $filename) {
-    if (!defined('CLOUDINARY_CLOUD_NAME') || !CLOUDINARY_CLOUD_NAME) return false;
-    $url = 'https://api.cloudinary.com/v1_1/' . CLOUDINARY_CLOUD_NAME . '/image/upload';
-
-    $timestamp = time();
-    $params_to_sign = 'timestamp=' . $timestamp . CLOUDINARY_API_SECRET;
-    $signature = sha1($params_to_sign);
-
-    $cfile = new CURLFile($filePath, mime_content_type($filePath), $filename);
-
-    $post = [
-        'file' => $cfile,
-        'api_key' => CLOUDINARY_API_KEY,
-        'timestamp' => $timestamp,
-        'signature' => $signature
-    ];
-
-    $ch = curl_init();
-    curl_setopt($ch, CURLOPT_URL, $url);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $post);
-    $response = curl_exec($ch);
-    $err = curl_error($ch);
-    curl_close($ch);
-
-    if ($err) return false;
-    $data = json_decode($response, true);
-    return $data['secure_url'] ?? false;
+// Helper: upload file to local storage
+function upload_to_local($file, $upload_dir = 'uploads/products/') {
+    if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
+        return false;
+    }
+    
+    // Kiểm tra kích thước file
+    if ($file['size'] > MAX_FILE_SIZE) {
+        return false;
+    }
+    
+    // Kiểm tra loại file
+    $allowed_types = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    $file_type = mime_content_type($file['tmp_name']);
+    
+    if (!in_array($file_type, $allowed_types)) {
+        return false;
+    }
+    
+    // Tạo tên file unique
+    $file_extension = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $file_name = uniqid() . '_' . time() . '.' . $file_extension;
+    $file_path = $upload_dir . $file_name;
+    
+    // Tạo thư mục nếu chưa có
+    if (!is_dir($upload_dir)) {
+        mkdir($upload_dir, 0755, true);
+    }
+    
+    // Di chuyển file
+    if (move_uploaded_file($file['tmp_name'], $file_path)) {
+        return SITE_URL . '/' . $file_path;
+    }
+    
+    return false;
 }
 
 // Xử lý thêm/sửa/xóa sản phẩm
@@ -61,27 +66,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $is_bestseller = isset($_POST['is_bestseller']) ? 1 : 0;
         $is_active = isset($_POST['is_active']) ? 1 : 0;
         
-        // Handle images: either uploaded files or URLs in images_urls textarea
+        // Handle images: upload to local storage
         $images_urls = [];
         if (!empty($_FILES['images']) && is_array($_FILES['images']['tmp_name'])) {
             for ($i = 0; $i < count($_FILES['images']['tmp_name']); $i++) {
-                $tmp = $_FILES['images']['tmp_name'][$i];
-                $name = basename($_FILES['images']['name'][$i]);
-                if (is_uploaded_file($tmp)) {
-                    // Try Cloudinary first
-                    $uploaded = upload_to_cloudinary($tmp, $name);
-                    if ($uploaded) {
-                        $images_urls[] = $uploaded;
-                        continue;
-                    }
-
-                    // Fallback: move to local uploads
-                    $destDir = __DIR__ . '/../' . UPLOAD_PATH;
-                    if (!is_dir($destDir)) mkdir($destDir, 0755, true);
-                    $dest = $destDir . time() . '_' . $name;
-                    if (move_uploaded_file($tmp, $dest)) {
-                        $images_urls[] = rtrim(SITE_URL, '/') . '/' . UPLOAD_PATH . basename($dest);
-                    }
+                $file = [
+                    'tmp_name' => $_FILES['images']['tmp_name'][$i],
+                    'name' => $_FILES['images']['name'][$i],
+                    'size' => $_FILES['images']['size'][$i],
+                    'type' => $_FILES['images']['type'][$i]
+                ];
+                
+                $uploaded = upload_to_local($file);
+                if ($uploaded) {
+                    $images_urls[] = $uploaded;
                 }
             }
         }
@@ -139,20 +137,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $images_urls = [];
         if (!empty($_FILES['images']) && is_array($_FILES['images']['tmp_name']) && $_FILES['images']['tmp_name'][0]) {
             for ($i = 0; $i < count($_FILES['images']['tmp_name']); $i++) {
-                $tmp = $_FILES['images']['tmp_name'][$i];
-                $name = basename($_FILES['images']['name'][$i]);
-                if (is_uploaded_file($tmp)) {
-                    $uploaded = upload_to_cloudinary($tmp, $name);
-                    if ($uploaded) {
-                        $images_urls[] = $uploaded;
-                        continue;
-                    }
-                    $destDir = __DIR__ . '/../' . UPLOAD_PATH;
-                    if (!is_dir($destDir)) mkdir($destDir, 0755, true);
-                    $dest = $destDir . time() . '_' . $name;
-                    if (move_uploaded_file($tmp, $dest)) {
-                        $images_urls[] = rtrim(SITE_URL, '/') . '/' . UPLOAD_PATH . basename($dest);
-                    }
+                $file = [
+                    'tmp_name' => $_FILES['images']['tmp_name'][$i],
+                    'name' => $_FILES['images']['name'][$i],
+                    'size' => $_FILES['images']['size'][$i],
+                    'type' => $_FILES['images']['type'][$i]
+                ];
+                
+                $uploaded = upload_to_local($file);
+                if ($uploaded) {
+                    $images_urls[] = $uploaded;
                 }
             }
         }

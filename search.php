@@ -6,6 +6,11 @@ $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $limit = 12;
 $offset = ($page - 1) * $limit;
 
+// Giới hạn độ dài query để tránh tấn công
+if (mb_strlen($query) > 100) {
+    $query = mb_substr($query, 0, 100);
+}
+
 $page_title = $query ? ('Tìm kiếm: ' . htmlspecialchars($query)) : 'Tìm kiếm sản phẩm';
 $page_description = 'Kết quả tìm kiếm sản phẩm theo từ khóa';
 
@@ -147,7 +152,7 @@ include 'includes/header.php';
 </div>
 
 <style>
-.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 </style>
 
 <?php include 'includes/footer.php'; ?>

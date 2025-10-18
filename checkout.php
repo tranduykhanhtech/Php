@@ -1,5 +1,6 @@
 <?php
 require_once 'config/database.php';
+require_once 'includes/csrf.php';
 
 requireLoginChecked();
 
@@ -8,12 +9,19 @@ $page_description = 'Hoàn tất đơn hàng của bạn';
 
 // Xử lý đặt hàng
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // CSRF Protection
+    if (!validateCSRFToken($_POST['csrf_token'] ?? '')) {
+        $_SESSION['error'] = 'Token không hợp lệ. Vui lòng thử lại.';
+        redirect('checkout.php');
+    }
+    
     $customer_name = sanitize($_POST['customer_name']);
     $customer_email = sanitize($_POST['customer_email']);
     $customer_phone = sanitize($_POST['customer_phone']);
     $customer_address = sanitize($_POST['customer_address']);
     $payment_method = $_POST['payment_method'];
     $notes = sanitize($_POST['notes']);
+    $voucher_code = isset($_POST['voucher_code']) ? sanitize($_POST['voucher_code']) : '';
     
     // Validation
     if (empty($customer_name) || empty($customer_email) || empty($customer_phone) || empty($customer_address)) {
@@ -22,12 +30,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         try {
             $pdo->beginTransaction();
             
-            // Lấy sản phẩm trong giỏ hàng
+            // Lấy sản phẩm trong giỏ hàng với LOCK để tránh race condition
             $cart_items = $pdo->prepare("
                 SELECT c.*, p.name, p.price, p.sale_price, p.stock_quantity
                 FROM cart c
                 LEFT JOIN products p ON c.product_id = p.id
                 WHERE c.user_id = ? AND p.is_active = 1
+                FOR UPDATE
             ");
             $cart_items->execute([$_SESSION['user_id']]);
             $cart_items = $cart_items->fetchAll();
@@ -36,11 +45,43 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 throw new Exception('Giỏ hàng trống');
             }
             
-            // Kiểm tra tồn kho
+            // Kiểm tra tồn kho với LOCK
             foreach ($cart_items as $item) {
-                if ($item['quantity'] > $item['stock_quantity']) {
-                    throw new Exception("Sản phẩm '{$item['name']}' không đủ tồn kho");
+                $check_stock = $pdo->prepare("SELECT stock_quantity FROM products WHERE id = ? FOR UPDATE");
+                $check_stock->execute([$item['product_id']]);
+                $current_stock = $check_stock->fetch()['stock_quantity'];
+                
+                if ($item['quantity'] > $current_stock) {
+                    throw new Exception("Sản phẩm '{$item['name']}' không đủ tồn kho. Còn lại: {$current_stock}");
                 }
+            }
+            
+            // Xử lý voucher
+            $voucher_discount = 0;
+            $voucher_id = null;
+            if (!empty($voucher_code)) {
+                $voucher_stmt = $pdo->prepare("
+                    SELECT * FROM vouchers 
+                    WHERE code = ? AND is_active = 1 
+                    AND (starts_at IS NULL OR starts_at <= NOW()) 
+                    AND (expires_at IS NULL OR expires_at >= NOW())
+                    AND (usage_limit IS NULL OR used_count < usage_limit)
+                ");
+                $voucher_stmt->execute([$voucher_code]);
+                $voucher = $voucher_stmt->fetch();
+                
+                if (!$voucher) {
+                    throw new Exception('Mã voucher không hợp lệ hoặc đã hết hạn');
+                }
+                
+                // Kiểm tra đã sử dụng voucher này chưa
+                $used_check = $pdo->prepare("SELECT COUNT(*) as count FROM voucher_usage WHERE voucher_id = ? AND user_id = ?");
+                $used_check->execute([$voucher['id'], $_SESSION['user_id']]);
+                if ($used_check->fetch()['count'] > 0) {
+                    throw new Exception('Bạn đã sử dụng voucher này rồi');
+                }
+                
+                $voucher_id = $voucher['id'];
             }
             
             // Tính tổng tiền
@@ -50,8 +91,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $subtotal += $price * $item['quantity'];
             }
             
+            // Tính discount từ voucher
+            if ($voucher_id) {
+                $voucher_stmt = $pdo->prepare("SELECT * FROM vouchers WHERE id = ?");
+                $voucher_stmt->execute([$voucher_id]);
+                $voucher = $voucher_stmt->fetch();
+                
+                if ($subtotal >= $voucher['min_order_amount']) {
+                    if ($voucher['type'] == 'percentage') {
+                        $voucher_discount = ($subtotal * $voucher['value']) / 100;
+                        if ($voucher['max_discount'] && $voucher_discount > $voucher['max_discount']) {
+                            $voucher_discount = $voucher['max_discount'];
+                        }
+                    } else {
+                        $voucher_discount = $voucher['value'];
+                    }
+                } else {
+                    throw new Exception("Đơn hàng phải tối thiểu " . formatPrice($voucher['min_order_amount']) . " để sử dụng voucher này");
+                }
+            }
+            
             $shipping_fee = $subtotal >= 500000 ? 0 : 30000;
-            $total_amount = $subtotal + $shipping_fee;
+            $total_amount = $subtotal - $voucher_discount + $shipping_fee;
             
             // Tạo mã đơn hàng
             $order_number = 'ORD' . date('Ymd') . str_pad(rand(1, 9999), 4, '0', STR_PAD_LEFT);
@@ -59,13 +120,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Tạo đơn hàng
             $stmt = $pdo->prepare("
                 INSERT INTO orders (order_number, user_id, customer_name, customer_email, customer_phone, 
-                                  customer_address, total_amount, shipping_fee, payment_method, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                  customer_address, total_amount, shipping_fee, discount_amount, payment_method, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ");
             $stmt->execute([
                 $order_number, $_SESSION['user_id'], $customer_name, $customer_email, 
                 $customer_phone, $customer_address, $total_amount, $shipping_fee, 
-                $payment_method, $notes
+                $voucher_discount, $payment_method, $notes
             ]);
             
             $order_id = $pdo->lastInsertId();
@@ -88,6 +149,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Cập nhật tồn kho
                 $stmt = $pdo->prepare("UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ?");
                 $stmt->execute([$item['quantity'], $item['product_id']]);
+            }
+            
+            // Lưu voucher usage nếu có
+            if ($voucher_id) {
+                $voucher_usage = $pdo->prepare("
+                    INSERT INTO voucher_usage (voucher_id, user_id, order_id, discount_amount) 
+                    VALUES (?, ?, ?, ?)
+                ");
+                $voucher_usage->execute([$voucher_id, $_SESSION['user_id'], $order_id, $voucher_discount]);
+                
+                // Cập nhật số lần sử dụng voucher
+                $update_voucher = $pdo->prepare("UPDATE vouchers SET used_count = used_count + 1 WHERE id = ?");
+                $update_voucher->execute([$voucher_id]);
             }
             
             // Xóa giỏ hàng
@@ -170,6 +244,7 @@ include 'includes/header.php';
     <h1 class="text-3xl font-bold text-gray-900 mb-8">Thanh toán</h1>
 
     <form method="POST" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <?php echo csrfField(); ?>
         <!-- Checkout Form -->
         <div class="lg:col-span-2 space-y-8">
             <!-- Customer Information -->
@@ -214,6 +289,27 @@ include 'includes/header.php';
                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"><?php echo htmlspecialchars($user['address']); ?></textarea>
                     </div>
                 </div>
+            </div>
+
+            <!-- Voucher -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold text-gray-900 mb-6">
+                    <i class="fas fa-ticket-alt mr-2"></i>Mã giảm giá
+                </h2>
+                
+                <div class="flex gap-4">
+                    <div class="flex-1">
+                        <input type="text" id="voucher_code" name="voucher_code" 
+                               placeholder="Nhập mã giảm giá"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent">
+                    </div>
+                    <button type="button" id="apply_voucher" 
+                            class="px-6 py-2 bg-primary text-white rounded-md hover:bg-primary-dark transition-colors">
+                        Áp dụng
+                    </button>
+                </div>
+                
+                <div id="voucher_message" class="mt-2 text-sm"></div>
             </div>
 
             <!-- Payment Method -->
@@ -321,6 +417,12 @@ include 'includes/header.php';
                         <span class="text-gray-600">Tạm tính:</span>
                         <span class="font-medium"><?php echo formatPrice($subtotal); ?></span>
                     </div>
+                    
+                    <div id="voucher_discount_row" class="flex justify-between hidden">
+                        <span class="text-gray-600">Giảm giá:</span>
+                        <span class="font-medium text-green-600" id="voucher_discount_amount">-0 VNĐ</span>
+                    </div>
+                    
                     <div class="flex justify-between">
                         <span class="text-gray-600">Phí vận chuyển:</span>
                         <span class="font-medium">
@@ -334,7 +436,7 @@ include 'includes/header.php';
                     <div class="border-t pt-3">
                         <div class="flex justify-between text-lg font-semibold">
                             <span>Tổng cộng:</span>
-                            <span class="text-primary"><?php echo formatPrice($total); ?></span>
+                            <span class="text-primary" id="total_amount"><?php echo formatPrice($total); ?></span>
                         </div>
                     </div>
                 </div>
@@ -369,9 +471,61 @@ include 'includes/header.php';
 .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
 </style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const applyVoucherBtn = document.getElementById('apply_voucher');
+    const voucherCodeInput = document.getElementById('voucher_code');
+    const voucherMessage = document.getElementById('voucher_message');
+    const voucherDiscountRow = document.getElementById('voucher_discount_row');
+    const voucherDiscountAmount = document.getElementById('voucher_discount_amount');
+    const totalAmount = document.getElementById('total_amount');
+    
+    const subtotal = <?php echo $subtotal; ?>;
+    const shippingFee = <?php echo $shipping_fee; ?>;
+    
+    applyVoucherBtn.addEventListener('click', function() {
+        const code = voucherCodeInput.value.trim();
+        if (!code) {
+            voucherMessage.innerHTML = '<span class="text-red-500">Vui lòng nhập mã voucher</span>';
+            return;
+        }
+        
+        // Gửi AJAX request để kiểm tra voucher
+        fetch('api/check-voucher.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ code: code, subtotal: subtotal })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                voucherMessage.innerHTML = '<span class="text-green-500">✓ ' + data.message + '</span>';
+                voucherDiscountRow.classList.remove('hidden');
+                voucherDiscountAmount.textContent = '-' + formatPrice(data.discount);
+                totalAmount.textContent = formatPrice(data.new_total);
+            } else {
+                voucherMessage.innerHTML = '<span class="text-red-500">✗ ' + data.message + '</span>';
+                voucherDiscountRow.classList.add('hidden');
+                totalAmount.textContent = formatPrice(subtotal + shippingFee);
+            }
+        })
+        .catch(error => {
+            voucherMessage.innerHTML = '<span class="text-red-500">Lỗi kết nối</span>';
+        });
+    });
+    
+    function formatPrice(price) {
+        return new Intl.NumberFormat('vi-VN').format(price) + ' VNĐ';
+    }
+});
+</script>
 
 <?php include 'includes/footer.php'; ?>

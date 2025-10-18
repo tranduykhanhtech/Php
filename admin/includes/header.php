@@ -49,6 +49,11 @@
                     Sản phẩm
                 </a>
                 
+                <a href="upload-images.php" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 <?php echo basename($_SERVER['PHP_SELF']) == 'upload-images.php' ? 'bg-primary bg-opacity-10 text-primary border-r-2 border-primary' : ''; ?>">
+                    <i class="fas fa-images mr-3"></i>
+                    Upload Hình Ảnh
+                </a>
+                
                 <a href="categories.php" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 <?php echo basename($_SERVER['PHP_SELF']) == 'categories.php' ? 'bg-primary bg-opacity-10 text-primary border-r-2 border-primary' : ''; ?>">
                     <i class="fas fa-tags mr-3"></i>
                     Danh mục
@@ -67,6 +72,11 @@
                 <a href="posts.php" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 <?php echo basename($_SERVER['PHP_SELF']) == 'posts.php' ? 'bg-primary bg-opacity-10 text-primary border-r-2 border-primary' : ''; ?>">
                     <i class="fas fa-blog mr-3"></i>
                     Bài viết
+                </a>
+                
+                <a href="vouchers.php" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 <?php echo basename($_SERVER['PHP_SELF']) == 'vouchers.php' ? 'bg-primary bg-opacity-10 text-primary border-r-2 border-primary' : ''; ?>">
+                    <i class="fas fa-ticket-alt mr-3"></i>
+                    Voucher
                 </a>
                 
                 <a href="settings.php" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 <?php echo basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'bg-primary bg-opacity-10 text-primary border-r-2 border-primary' : ''; ?>">

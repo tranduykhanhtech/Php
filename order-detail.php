@@ -141,8 +141,14 @@ include 'includes/header.php';
                     <div class="space-y-2">
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">Tạm tính</span>
-                            <span class="font-medium"><?php echo formatPrice($order['total_amount'] - $order['shipping_fee']); ?></span>
+                            <span class="font-medium"><?php echo formatPrice($order['total_amount'] - $order['shipping_fee'] + $order['discount_amount']); ?></span>
                         </div>
+                        <?php if ($order['discount_amount'] > 0): ?>
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Giảm giá</span>
+                            <span class="font-medium text-green-600">-<?php echo formatPrice($order['discount_amount']); ?></span>
+                        </div>
+                        <?php endif; ?>
                         <div class="flex justify-between text-sm">
                             <span class="text-gray-600">Phí vận chuyển</span>
                             <span class="font-medium"><?php echo $order['shipping_fee'] == 0 ? 'Miễn phí' : formatPrice($order['shipping_fee']); ?></span>

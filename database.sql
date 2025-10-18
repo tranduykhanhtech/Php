@@ -12,6 +12,8 @@ CREATE TABLE users (
     phone VARCHAR(20),
     address TEXT,
     role ENUM('customer', 'admin') DEFAULT 'customer',
+    is_locked BOOLEAN DEFAULT FALSE,
+    suspension_until TIMESTAMP NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
@@ -124,6 +126,51 @@ CREATE TABLE posts (
     FOREIGN KEY (author_id) REFERENCES users(id) ON DELETE CASCADE
 );
 
+-- Bảng voucher
+CREATE TABLE vouchers (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    code VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(200) NOT NULL,
+    description TEXT,
+    type ENUM('percentage', 'fixed') NOT NULL,
+    value DECIMAL(10,2) NOT NULL,
+    min_order_amount DECIMAL(10,2) DEFAULT 0,
+    max_discount DECIMAL(10,2) NULL,
+    usage_limit INT NULL,
+    used_count INT DEFAULT 0,
+    is_active BOOLEAN DEFAULT TRUE,
+    starts_at TIMESTAMP NULL,
+    expires_at TIMESTAMP NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Bảng sử dụng voucher
+CREATE TABLE voucher_usage (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    voucher_id INT NOT NULL,
+    user_id INT NOT NULL,
+    order_id INT NOT NULL,
+    discount_amount DECIMAL(10,2) NOT NULL,
+    used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (voucher_id) REFERENCES vouchers(id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_voucher_user_order (voucher_id, user_id, order_id)
+);
+
+-- Bảng remember tokens cho chức năng "Remember Me"
+CREATE TABLE remember_tokens (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    token_hash VARCHAR(255) NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_token_hash (token_hash),
+    INDEX idx_expires_at (expires_at)
+);
+
 -- Bảng cài đặt website
 CREATE TABLE settings (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -165,3 +212,40 @@ INSERT INTO settings (setting_key, setting_value, description) VALUES
 ('contact_phone', '0123456789', 'Số điện thoại liên hệ'),
 ('shipping_fee', '30000', 'Phí vận chuyển'),
 ('free_shipping_threshold', '500000', 'Ngưỡng miễn phí vận chuyển');
+
+-- Voucher mẫu
+INSERT INTO vouchers (code, name, description, type, value, min_order_amount, max_discount, usage_limit, is_active, starts_at, expires_at) VALUES 
+('WELCOME10', 'Chào mừng 10%', 'Giảm 10% cho đơn hàng đầu tiên', 'percentage', 10, 200000, 50000, 100, 1, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY)),
+('SAVE50K', 'Tiết kiệm 50K', 'Giảm 50,000 VNĐ cho đơn hàng từ 500K', 'fixed', 50000, 500000, NULL, 50, 1, NOW(), DATE_ADD(NOW(), INTERVAL 15 DAY)),
+('VIP20', 'VIP 20%', 'Giảm 20% cho khách VIP', 'percentage', 20, 1000000, 200000, 20, 1, NOW(), DATE_ADD(NOW(), INTERVAL 7 DAY)),
+('NEWYEAR15', 'Năm mới 15%', 'Chào năm mới với ưu đãi 15%', 'percentage', 15, 300000, 100000, 200, 1, NOW(), DATE_ADD(NOW(), INTERVAL 60 DAY));
+
+-- Thêm indexes để cải thiện performance
+CREATE INDEX idx_products_category_active ON products(category_id, is_active);
+CREATE INDEX idx_products_name_search ON products(name);
+CREATE INDEX idx_products_price ON products(price);
+CREATE INDEX idx_products_created_at ON products(created_at);
+CREATE INDEX idx_products_is_bestseller ON products(is_bestseller);
+CREATE INDEX idx_products_stock ON products(stock_quantity);
+
+CREATE INDEX idx_orders_user_id ON orders(user_id);
+CREATE INDEX idx_orders_status ON orders(order_status);
+CREATE INDEX idx_orders_created_at ON orders(created_at);
+CREATE INDEX idx_orders_payment_status ON orders(payment_status);
+
+CREATE INDEX idx_cart_user_id ON cart(user_id);
+CREATE INDEX idx_cart_product_id ON cart(product_id);
+
+CREATE INDEX idx_order_items_order_id ON order_items(order_id);
+CREATE INDEX idx_order_items_product_id ON order_items(product_id);
+
+CREATE INDEX idx_vouchers_code ON vouchers(code);
+CREATE INDEX idx_vouchers_active ON vouchers(is_active);
+CREATE INDEX idx_vouchers_expires ON vouchers(expires_at);
+
+CREATE INDEX idx_voucher_usage_user_id ON voucher_usage(user_id);
+CREATE INDEX idx_voucher_usage_voucher_id ON voucher_usage(voucher_id);
+
+CREATE INDEX idx_posts_author ON posts(author_id);
+CREATE INDEX idx_posts_status ON posts(status);
+CREATE INDEX idx_posts_created_at ON posts(created_at);

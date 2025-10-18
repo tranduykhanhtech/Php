@@ -26,6 +26,9 @@ define('SITE_URL', getenv('SITE_URL') ?: 'https://gecko.io.vn');
 define('SITE_NAME', 'Gecko Shop');
 define('ADMIN_EMAIL', 'admin@gecko.io.vn');
 
+// Cấu hình bảo mật
+define('APP_KEY', 'your-secret-app-key-change-this-in-production');
+
 // Cấu hình upload
 define('UPLOAD_PATH', 'uploads/');
 define('MAX_FILE_SIZE', 5 * 1024 * 1024); // 5MB

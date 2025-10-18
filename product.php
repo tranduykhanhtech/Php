@@ -47,8 +47,8 @@ $related_products = $pdo->prepare(
 $related_products->execute([$product['category_id'], $product_id]);
 $related_products = $related_products->fetchAll();
 
-// Xử lý thêm vào giỏ hàng
-if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
+// Xử lý thêm vào giỏ hàng (hỗ trợ cả 'Thêm vào giỏ' và 'Mua ngay')
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && (isset($_POST['add_to_cart']) || !empty($_POST['buy_now']))) {
     if (!isLoggedIn()) {
         $_SESSION['error'] = 'Vui lòng đăng nhập để thêm sản phẩm vào giỏ hàng';
         redirect('login.php');
@@ -79,6 +79,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['add_to_cart'])) {
         }
     } else {
         $_SESSION['error'] = 'Số lượng không hợp lệ hoặc vượt quá tồn kho';
+    }
+    // Nếu hành động là Mua ngay thì chuyển thẳng tới trang thanh toán
+    if (!empty($_POST['buy_now'])) {
+        redirect('checkout.php');
     }
 }
 
@@ -200,7 +204,7 @@ include 'includes/header.php';
             </div>
 
             <!-- Add to Cart -->
-            <form method="POST" class="mb-8">
+            <form method="POST" id="addToCartForm" class="mb-8">
                 <div class="flex items-center space-x-4 mb-4">
                     <label for="quantity" class="font-semibold text-gray-900">Số lượng:</label>
                     <div class="flex items-center border border-gray-300 rounded-lg">
@@ -225,6 +229,7 @@ include 'includes/header.php';
                             class="flex-1 bg-primary text-white px-6 py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors">
                         <i class="fas fa-shopping-cart mr-2"></i>Thêm vào giỏ hàng
                     </button>
+                    <input type="hidden" name="buy_now" id="buy_now" value="0">
                     <button type="button" onclick="buyNow()" 
                             class="flex-1 bg-accent text-white px-6 py-3 rounded-lg font-semibold hover:bg-pink-600 transition-colors">
                         <i class="fas fa-bolt mr-2"></i>Mua ngay
@@ -331,8 +336,11 @@ function decreaseQuantity() {
 }
 
 function buyNow() {
-    const quantity = document.getElementById('quantity').value;
-    window.location.href = `checkout.php?product_id=<?php echo $product_id; ?>&quantity=${quantity}`;
+    // mark as buy now and submit the form so server will add to cart then redirect to checkout
+    var buyInput = document.getElementById('buy_now');
+    if (buyInput) buyInput.value = '1';
+    var form = document.getElementById('addToCartForm');
+    if (form) form.submit();
 }
 </script>
 
@@ -340,6 +348,7 @@ function buyNow() {
 .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }

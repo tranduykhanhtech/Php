@@ -1,83 +1,70 @@
-# Natural Cosmetics Shop - .htaccess Configuration
-
-# Enable rewrite engine
+# Bảo mật website
 RewriteEngine On
 
-# Force HTTPS redirect
+# Chuyển hướng HTTP sang HTTPS
 RewriteCond %{HTTPS} off
 RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-# Security headers
-<IfModule mod_headers.c>
-    # Prevent clickjacking
-    Header always append X-Frame-Options SAMEORIGIN
-    
-    # Prevent MIME type sniffing
-    Header set X-Content-Type-Options nosniff
-    
-    # Enable XSS protection
-    Header set X-XSS-Protection "1; mode=block"
-    
-    # Referrer Policy
-    Header set Referrer-Policy "strict-origin-when-cross-origin"
-    
-    # Content Security Policy
-    Header set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: https:; font-src 'self' https://cdnjs.cloudflare.com;"
-</IfModule>
+# Ẩn thông tin server
+ServerTokens Prod
+ServerSignature Off
 
-# Hide sensitive files
-<Files "config/database.php">
-    Order Allow,Deny
+# Bảo vệ file cấu hình
+<Files "config/*">
+    Order Deny,Allow
     Deny from all
 </Files>
 
-<Files "database.sql">
-    Order Allow,Deny
+# Bảo vệ file .env
+<Files ".env">
+    Order Deny,Allow
     Deny from all
 </Files>
 
-<Files "*.md">
-    Order Allow,Deny
+# Bảo vệ file .htaccess
+<Files ".htaccess">
+    Order Deny,Allow
     Deny from all
 </Files>
 
-# Prevent access to uploads directory listing
+# Chặn truy cập thư mục
 Options -Indexes
 
-# Cache static files
-<IfModule mod_expires.c>
-    ExpiresActive On
-    ExpiresByType text/css "access plus 1 month"
-    ExpiresByType application/javascript "access plus 1 month"
-    ExpiresByType image/png "access plus 1 month"
-    ExpiresByType image/jpg "access plus 1 month"
-    ExpiresByType image/jpeg "access plus 1 month"
-    ExpiresByType image/gif "access plus 1 month"
-    ExpiresByType image/svg+xml "access plus 1 month"
+# Bảo mật headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options DENY
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' cdn.tailwindcss.com cdnjs.cloudflare.com cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' cdnjs.cloudflare.com; img-src 'self' data: https:; font-src 'self' cdnjs.cloudflare.com;"
 </IfModule>
 
-# Gzip compression
-<IfModule mod_deflate.c>
-    AddOutputFilterByType DEFLATE text/plain
-    AddOutputFilterByType DEFLATE text/html
-    AddOutputFilterByType DEFLATE text/xml
-    AddOutputFilterByType DEFLATE text/css
-    AddOutputFilterByType DEFLATE application/xml
-    AddOutputFilterByType DEFLATE application/xhtml+xml
-    AddOutputFilterByType DEFLATE application/rss+xml
-    AddOutputFilterByType DEFLATE application/javascript
-    AddOutputFilterByType DEFLATE application/x-javascript
-</IfModule>
+# Giới hạn kích thước upload
+php_value upload_max_filesize 5M
+php_value post_max_size 10M
+php_value max_execution_time 30
+php_value max_input_time 30
 
-# Error pages
-ErrorDocument 404 /404.php
-ErrorDocument 500 /500.php
+# Tắt hiển thị lỗi PHP
+php_flag display_errors Off
+php_flag log_errors On
 
-# PHP settings
-<IfModule mod_php7.c>
-    php_value upload_max_filesize 5M
-    php_value post_max_size 5M
-    php_value max_execution_time 30
-    php_value max_input_time 30
-    php_value memory_limit 128M
-</IfModule>
+# Chặn truy cập file backup
+<FilesMatch "\.(bak|backup|old|tmp)$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+
+# Chặn truy cập file log
+<FilesMatch "\.log$">
+    Order Deny,Allow
+    Deny from all
+</FilesMatch>
+
+# Chặn truy cập thư mục uploads trực tiếp (chỉ cho phép ảnh)
+<Directory "uploads">
+    <FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|jsp|asp|sh|cgi)$">
+        Order Deny,Allow
+        Deny from all
+    </FilesMatch>
+</Directory>

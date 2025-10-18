@@ -22,7 +22,7 @@ define('DB_CHARSET', getenv('DB_CHARSET') ?: 'utf8mb4');
 define('DB_PORT', (int)(getenv('DB_PORT') ?: 4000));
 
 // Cấu hình website
-define('SITE_URL', getenv('SITE_URL') ?: 'https://gecko.io.vn');
+define('SITE_URL', getenv('SITE_URL') ?: 'http://localhost:8000');
 define('SITE_NAME', 'Gecko Shop');
 define('ADMIN_EMAIL', 'admin@gecko.io.vn');
 
@@ -199,7 +199,13 @@ function requireAdmin() {
     requireLoginChecked();
     if (!isAdmin()) {
         // Non-admin users should be sent to the public homepage (not the admin index)
-        redirect('index.php');
+        // Check if we're in admin directory
+        $current_dir = dirname($_SERVER['PHP_SELF']);
+        if (strpos($current_dir, '/admin') !== false) {
+            redirect('../index.php');
+        } else {
+            redirect('index.php');
+        }
     }
 }
 

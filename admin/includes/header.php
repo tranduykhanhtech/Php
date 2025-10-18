@@ -69,6 +69,11 @@
                     Khách hàng
                 </a>
                 
+                <a href="contacts.php" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 <?php echo basename($_SERVER['PHP_SELF']) == 'contacts.php' ? 'bg-primary bg-opacity-10 text-primary border-r-2 border-primary' : ''; ?>">
+                    <i class="fas fa-envelope mr-3"></i>
+                    Liên hệ
+                </a>
+                
                 <a href="posts.php" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 <?php echo basename($_SERVER['PHP_SELF']) == 'posts.php' ? 'bg-primary bg-opacity-10 text-primary border-r-2 border-primary' : ''; ?>">
                     <i class="fas fa-blog mr-3"></i>
                     Bài viết

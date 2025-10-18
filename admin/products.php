@@ -217,7 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
     
-    redirect('admin/products.php');
+    redirect('products.php');
 }
 
 // Lấy danh sách sản phẩm

@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_category'])) {
         }
     }
 
-    redirect('admin/categories.php');
+    redirect('categories.php');
 }
 
 // Handle update
@@ -49,7 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_category'])) {
         }
     }
 
-    redirect('admin/categories.php');
+    redirect('categories.php');
 }
 
 // Handle delete
@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
         $_SESSION['error'] = 'Có lỗi xảy ra khi xóa danh mục.';
     }
 
-    redirect('admin/categories.php');
+    redirect('categories.php');
 }
 
 // Fetch categories (flat list)

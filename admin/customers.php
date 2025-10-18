@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
         }
     }
 
-    redirect('admin/customers.php');
+    redirect('customers.php');
 }
 
 // Handle delete
@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
     // Prevent deleting yourself or admin accounts
     if ($id === ($_SESSION['user_id'] ?? 0)) {
         $_SESSION['error'] = 'Bạn không thể xóa chính mình.';
-        redirect('admin/customers.php');
+        redirect('customers.php');
     }
 
     $check = $pdo->prepare("SELECT role FROM users WHERE id = ?");
@@ -43,11 +43,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
     $u = $check->fetch();
     if (!$u) {
         $_SESSION['error'] = 'Người dùng không tồn tại.';
-        redirect('admin/customers.php');
+        redirect('customers.php');
     }
     if ($u['role'] === 'admin') {
         $_SESSION['error'] = 'Không thể xóa tài khoản admin.';
-        redirect('admin/customers.php');
+        redirect('customers.php');
     }
 
     try {
@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
         $_SESSION['error'] = 'Có lỗi khi xóa người dùng.';
     }
 
-    redirect('admin/customers.php');
+    redirect('customers.php');
 }
 
 // Handle suspend/unlock/lock actions
@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['suspend_user'])) {
         $stmt->execute([$until, $id]);
         $_SESSION['success'] = 'Đã đình chỉ tài khoản.';
     }
-    redirect('admin/customers.php');
+    redirect('customers.php');
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['lock_user'])) {
@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['lock_user'])) {
         $stmt->execute([$id]);
         $_SESSION['success'] = 'Tài khoản đã bị khóa vĩnh viễn.';
     }
-    redirect('admin/customers.php');
+    redirect('customers.php');
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unlock_user'])) {
@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unlock_user'])) {
         $stmt->execute([$id]);
         $_SESSION['success'] = 'Đã mở khóa tài khoản.';
     }
-    redirect('admin/customers.php');
+    redirect('customers.php');
 }
 
 // Pagination

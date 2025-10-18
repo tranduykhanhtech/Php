@@ -86,6 +86,31 @@
                         </form>
                     </div>
                     
+                    <!-- Notifications -->
+                    <?php if (isLoggedIn()): ?>
+                        <div class="relative">
+                            <button id="notification-button" class="relative text-gray-900 hover:text-primary transition-colors">
+                                <i class="fas fa-bell text-xl"></i>
+                                <span class="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center hidden" id="notification-count">0</span>
+                            </button>
+                            <div id="notification-dropdown" class="absolute right-0 mt-2 w-80 bg-white rounded-md shadow-lg py-1 z-50 hidden" role="menu">
+                                <div class="px-4 py-2 border-b border-gray-200">
+                                    <h3 class="text-sm font-medium text-gray-900">Thông báo</h3>
+                                </div>
+                                <div id="notification-list" class="max-h-64 overflow-y-auto">
+                                    <div class="px-4 py-3 text-center text-gray-500">
+                                        <i class="fas fa-spinner fa-spin"></i> Đang tải...
+                                    </div>
+                                </div>
+                                <div class="px-4 py-2 border-t border-gray-200">
+                                    <a href="notifications.php" class="block text-center text-sm text-primary hover:text-green-700">
+                                        Xem tất cả thông báo
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                    
                     <!-- Cart -->
                     <a href="cart.php" class="relative text-gray-900 hover:text-primary transition-colors">
                         <i class="fas fa-shopping-cart text-xl"></i>
@@ -106,6 +131,9 @@
                                 </a>
                                 <a href="orders.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
                                     <i class="fas fa-shopping-bag mr-2"></i>Đơn hàng của tôi
+                                </a>
+                                <a href="notifications.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                                    <i class="fas fa-bell mr-2"></i>Thông báo
                                 </a>
                                 <?php if (isAdmin()): ?>
                                     <a href="admin/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
@@ -181,6 +209,117 @@
         
         // Update cart count on page load
         updateCartCount();
+        
+        // Notification functions
+        function updateNotificationCount() {
+            fetch('api/notification-count.php')
+                .then(response => response.json())
+                .then(data => {
+                    const countElement = document.getElementById('notification-count');
+                    if (data.count > 0) {
+                        countElement.textContent = data.count;
+                        countElement.classList.remove('hidden');
+                    } else {
+                        countElement.classList.add('hidden');
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        }
+        
+        function loadNotifications() {
+            fetch('api/notifications.php?page=1')
+                .then(response => response.json())
+                .then(data => {
+                    const listElement = document.getElementById('notification-list');
+                    if (data.notifications.length === 0) {
+                        listElement.innerHTML = '<div class="px-4 py-3 text-center text-gray-500">Chưa có thông báo nào</div>';
+                    } else {
+                        listElement.innerHTML = data.notifications.slice(0, 5).map(notification => `
+                            <div class="px-4 py-3 hover:bg-gray-50 ${!notification.is_read ? 'bg-blue-50' : ''}">
+                                <div class="flex items-start space-x-3">
+                                    <div class="flex-shrink-0">
+                                        <span class="text-lg">${getNotificationIcon(notification.type)}</span>
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-900">${notification.title}</p>
+                                        <p class="text-sm text-gray-600 truncate">${notification.message}</p>
+                                        <p class="text-xs text-gray-500">${formatTime(notification.created_at)}</p>
+                                    </div>
+                                    ${!notification.is_read ? '<div class="w-2 h-2 bg-blue-500 rounded-full"></div>' : ''}
+                                </div>
+                            </div>
+                        `).join('');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('notification-list').innerHTML = '<div class="px-4 py-3 text-center text-red-500">Lỗi tải thông báo</div>';
+                });
+        }
+        
+        function getNotificationIcon(type) {
+            const icons = {
+                'order': '🛍️',
+                'contact': '💬',
+                'general': '📢',
+                'promotion': '🎉'
+            };
+            return icons[type] || '📢';
+        }
+        
+        function formatTime(timestamp) {
+            const now = new Date();
+            const time = new Date(timestamp);
+            const diff = now - time;
+            const minutes = Math.floor(diff / 60000);
+            const hours = Math.floor(diff / 3600000);
+            const days = Math.floor(diff / 86400000);
+            
+            if (minutes < 1) return 'Vừa xong';
+            if (minutes < 60) return `${minutes} phút trước`;
+            if (hours < 24) return `${hours} giờ trước`;
+            return `${days} ngày trước`;
+        }
+        
+        // Update notification count on page load
+        updateNotificationCount();
+        
+        // Notification dropdown toggle
+        (function() {
+            const btn = document.getElementById('notification-button');
+            const dropdown = document.getElementById('notification-dropdown');
+            if (!btn || !dropdown) return;
+
+            function openDropdown() {
+                dropdown.classList.remove('hidden');
+                loadNotifications();
+            }
+
+            function closeDropdown() {
+                dropdown.classList.add('hidden');
+            }
+
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                if (dropdown.classList.contains('hidden')) {
+                    openDropdown();
+                } else {
+                    closeDropdown();
+                }
+            });
+
+            // Close when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!dropdown.contains(e.target) && !btn.contains(e.target)) {
+                    closeDropdown();
+                }
+            });
+
+            // Close on Escape
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') closeDropdown();
+            });
+        })();
         
         // User menu toggle (click to open/close) and accessibility
         (function() {

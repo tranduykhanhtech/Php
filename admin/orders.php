@@ -1,5 +1,6 @@
 <?php
 require_once '../config/database.php';
+require_once '../includes/notification_helper.php';
 
 requireAdmin();
 
@@ -13,9 +14,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
 
     if ($order_id > 0) {
         try {
-            $stmt = $pdo->prepare("UPDATE orders SET order_status = ?, payment_status = ?, updated_at = NOW() WHERE id = ?");
-            $stmt->execute([$new_status, $new_payment_status, $order_id]);
-            $_SESSION['success'] = 'Cập nhật trạng thái đơn hàng thành công';
+            // Lấy thông tin đơn hàng trước khi cập nhật
+            $order_stmt = $pdo->prepare("SELECT order_number, user_id, order_status FROM orders WHERE id = ?");
+            $order_stmt->execute([$order_id]);
+            $order = $order_stmt->fetch();
+            
+            if ($order) {
+                $old_status = $order['order_status'];
+                
+                // Cập nhật trạng thái đơn hàng
+                $stmt = $pdo->prepare("UPDATE orders SET order_status = ?, payment_status = ?, updated_at = NOW() WHERE id = ?");
+                $stmt->execute([$new_status, $new_payment_status, $order_id]);
+                
+                // Gửi thông báo nếu trạng thái thay đổi và có user_id
+                if ($old_status !== $new_status && $order['user_id']) {
+                    sendOrderNotification($order['user_id'], $order_id, $order['order_number'], $new_status);
+                }
+                
+                $_SESSION['success'] = 'Cập nhật trạng thái đơn hàng thành công';
+            } else {
+                $_SESSION['error'] = 'Không tìm thấy đơn hàng';
+            }
         } catch (Exception $e) {
             error_log('Order update error: ' . $e->getMessage());
             $_SESSION['error'] = 'Có lỗi xảy ra khi cập nhật trạng thái';
@@ -24,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
         $_SESSION['error'] = 'ID đơn hàng không hợp lệ';
     }
 
-    redirect('admin/orders.php');
+    redirect('orders.php');
 }
 
 // Pagination & filters

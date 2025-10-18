@@ -19,8 +19,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $error = 'Email không hợp lệ';
     } else {
-        // Ở đây bạn có thể lưu thông tin liên hệ vào database hoặc gửi email
-        $success = 'Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất có thể.';
+        try {
+            // Lưu thông tin liên hệ vào database
+            $stmt = $pdo->prepare("INSERT INTO contacts (name, email, phone, subject, message) VALUES (?, ?, ?, ?, ?)");
+            $stmt->execute([$name, $email, $phone, $subject, $message]);
+            
+            $success = 'Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất có thể.';
+            
+            // Clear form data after successful submission
+            $_POST = array();
+        } catch (Exception $e) {
+            $error = 'Đã có lỗi xảy ra. Vui lòng thử lại sau.';
+            error_log('Contact form error: ' . $e->getMessage());
+        }
     }
 }
 

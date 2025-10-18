@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    redirect('admin/posts.php');
+    redirect('posts.php');
 }
 
 // List posts with pagination

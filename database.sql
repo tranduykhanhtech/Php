@@ -171,6 +171,36 @@ CREATE TABLE remember_tokens (
     INDEX idx_expires_at (expires_at)
 );
 
+-- Bảng liên hệ từ khách hàng
+CREATE TABLE contacts (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    phone VARCHAR(20),
+    subject VARCHAR(100) NOT NULL,
+    message TEXT NOT NULL,
+    status ENUM('new', 'in_progress', 'resolved', 'closed') DEFAULT 'new',
+    admin_note TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Bảng thông báo
+CREATE TABLE notifications (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    message TEXT NOT NULL,
+    type ENUM('order', 'contact', 'general', 'promotion') DEFAULT 'general',
+    related_id INT NULL,
+    is_read BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_id (user_id),
+    INDEX idx_is_read (is_read),
+    INDEX idx_created_at (created_at)
+);
+
 -- Bảng cài đặt website
 CREATE TABLE settings (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -247,5 +277,9 @@ CREATE INDEX idx_voucher_usage_user_id ON voucher_usage(user_id);
 CREATE INDEX idx_voucher_usage_voucher_id ON voucher_usage(voucher_id);
 
 CREATE INDEX idx_posts_author ON posts(author_id);
-CREATE INDEX idx_posts_status ON posts(status);
+CREATE INDEX idx_posts_status ON posts(is_published);
 CREATE INDEX idx_posts_created_at ON posts(created_at);
+
+CREATE INDEX idx_contacts_status ON contacts(status);
+CREATE INDEX idx_contacts_created_at ON contacts(created_at);
+CREATE INDEX idx_contacts_email ON contacts(email);

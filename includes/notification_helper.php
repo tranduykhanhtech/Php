@@ -4,7 +4,7 @@
  * Các hàm hỗ trợ gửi và quản lý thông báo
  */
 
-require_once 'config/database.php';
+require_once __DIR__ . '/../config/database.php'; //changed: sửa đường dẫn
 
 /**
  * Gửi thông báo cho người dùng

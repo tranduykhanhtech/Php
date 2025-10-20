@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['update_status'])) {
         $_SESSION['error'] = 'Có lỗi xảy ra khi cập nhật liên hệ';
     }
     
-    redirect('contacts.php');
+    redirect('admin/contacts.php'); // changed: xử lý đường dẫn để load lại chính xác
 }
 
 // Xử lý xóa liên hệ
@@ -56,7 +56,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['delete_contact'])) {
     $stmt->execute([$contact_id]);
     
     $_SESSION['success'] = 'Đã xóa liên hệ';
-    redirect('contacts.php');
+    redirect('admin/contacts.php'); // changed: xử lý đường dẫn để load lại chính xác
 }
 
 // Phân trang và lọc

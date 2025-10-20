@@ -107,6 +107,14 @@ define('CLOUDINARY_CLOUD_NAME', getenv('CLOUDINARY_CLOUD_NAME') ?: '');
 define('CLOUDINARY_API_KEY', getenv('CLOUDINARY_API_KEY') ?: '');
 define('CLOUDINARY_API_SECRET', getenv('CLOUDINARY_API_SECRET') ?: '');
 
+// SMTP config (read from env if present)
+define('SMTP_HOST', getenv('SMTP_HOST') ?: '');
+define('SMTP_PORT', getenv('SMTP_PORT') ?: 587);
+define('SMTP_USER', getenv('SMTP_USER') ?: '');
+define('SMTP_PASS', getenv('SMTP_PASS') ?: '');
+define('SMTP_FROM_EMAIL', getenv('SMTP_FROM_EMAIL') ?: 'noreply@gecko.io.vn');
+define('SMTP_FROM_NAME', getenv('SMTP_FROM_NAME') ?: 'Gecko Shop');
+
     // If not logged in but a remember cookie exists, try to rehydrate the session.
     if (!isset($_SESSION['user_id']) && !empty($_COOKIE['remember_token'])) {
         try {

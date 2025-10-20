@@ -2,6 +2,8 @@
 
 Website bán mỹ phẩm thiên nhiên được xây dựng bằng PHP và MySQL với giao diện hiện đại sử dụng TailwindCSS.
 
+## Khóa và ko cho sửa URL dù có là admin, check unit số điện thoại trùng nhau, regex cho mật khẩu và số điện thoại, email
+
 ## Tính năng chính
 
 ### 🛍️ Cửa hàng trực tuyến

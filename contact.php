@@ -1,5 +1,6 @@
 <?php
 require_once 'config/database.php';
+require_once 'includes/email_helper.php';
 
 $page_title = 'Liên hệ';
 $page_description = 'Liên hệ với Natural Cosmetics Shop để được tư vấn và hỗ trợ';
@@ -24,8 +25,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $stmt = $pdo->prepare("INSERT INTO contacts (name, email, phone, subject, message) VALUES (?, ?, ?, ?, ?)");
             $stmt->execute([$name, $email, $phone, $subject, $message]);
             
-            $success = 'Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất có thể.';
-            
+            // Gửi email thông báo đến contact@gecko.io.vn (tùy chọn - có thể bật/tắt)
+            // sendContactNotification($name, $email, $phone, $subject, $message);
+
+            $success = 'Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất có thể. Nếu bạn cần hỗ trợ gấp, vui lòng gửi email đến contact@gecko.io.vn.';
+
             // Clear form data after successful submission
             $_POST = array();
         } catch (Exception $e) {

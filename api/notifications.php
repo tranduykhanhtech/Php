@@ -18,21 +18,31 @@ try {
         case 'GET':
             // Lấy danh sách thông báo
             $page = max(1, (int)($_GET['page'] ?? 1));
-            $limit = 20;
+            $limit = isset($_GET['limit']) ? max(1, (int)$_GET['limit']) : 20;
             $offset = ($page - 1) * $limit;
+            $unread_only = isset($_GET['unread_only']) && $_GET['unread_only'] == '1';
+            
+            // Build WHERE clause
+            $where = "user_id = ?";
+            if ($unread_only) {
+                $where .= " AND is_read = 0";
+            }
             
             $stmt = $pdo->prepare("
                 SELECT id, title, message, type, related_id, is_read, created_at
                 FROM notifications 
-                WHERE user_id = ? 
+                WHERE {$where}
                 ORDER BY created_at DESC 
                 LIMIT ? OFFSET ?
             ");
-            $stmt->execute([$user_id, $limit, $offset]);
+            $stmt->bindValue(1, $user_id, PDO::PARAM_INT);
+            $stmt->bindValue(2, $limit, PDO::PARAM_INT);
+            $stmt->bindValue(3, $offset, PDO::PARAM_INT);
+            $stmt->execute();
             $notifications = $stmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Đếm tổng số thông báo
-            $count_stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE user_id = ?");
+            $count_stmt = $pdo->prepare("SELECT COUNT(*) FROM notifications WHERE {$where}");
             $count_stmt->execute([$user_id]);
             $total = $count_stmt->fetchColumn();
             

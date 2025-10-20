@@ -6,6 +6,9 @@
     <title><?php echo isset($page_title) ? $page_title . ' - ' . SITE_NAME : SITE_NAME; ?></title>
     <meta name="description" content="<?php echo isset($page_description) ? $page_description : 'Cửa hàng mỹ phẩm thiên nhiên chất lượng cao'; ?>">
     
+    <!-- Favicon (inline to avoid 404) -->
+    <link rel="icon" type="image/svg+xml" sizes="any" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle fill='%2310B981' cx='32' cy='32' r='28'/%3E%3Cpath fill='%23ffffff' d='M40 20c-8 0-14 6-14 14 0 3 1 5 3 7l-5 5 3 3 5-5c2 2 4 3 7 3 8 0 14-6 14-14S48 20 40 20z'/%3E%3C/svg%3E">
+    
     <!-- TailwindCSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -24,6 +27,11 @@
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- In-page toast notifications (SSE) -->
+    <?php if (isLoggedIn()): ?>
+    <script src="/assets/js/browser-notification.js"></script>
+    <?php endif; ?>
     
     <!-- Custom CSS -->
     <style>

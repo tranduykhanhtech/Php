@@ -73,7 +73,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 
-    redirect('posts.php');
+    redirect('admin/posts.php'); // changed: Sửa đường dẫn redirect của trang post
 }
 
 // List posts with pagination
@@ -165,9 +165,10 @@ include 'includes/header.php';
 <?php endif; ?>
 
 <!-- Create/Edit Modal -->
-<div id="postModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+ <!-- sửa 3 dòng dưới để form có thể cuộn -->
+<div id="postModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50 overflow-y-auto">
     <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full">
+        <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto">
             <form method="POST" id="postForm">
                 <input type="hidden" name="form_action" id="form_action" value="create">
                 <div class="px-6 py-4 border-b">

@@ -1,3 +1,5 @@
+<?php require_once 'config.php'; ?>
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
@@ -143,8 +145,9 @@
                                 <a href="notifications.php" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
                                     <i class="fas fa-bell mr-2"></i>Thông báo
                                 </a>
+                                <!--changed: sửa đường dẫn trong href từ admin/ -> /admin/ -->
                                 <?php if (isAdmin()): ?>
-                                    <a href="admin/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem">
+                                    <a href="/admin/" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" role="menuitem"> 
                                         <i class="fas fa-cog mr-2"></i>Quản trị
                                     </a>
                                 <?php endif; ?>

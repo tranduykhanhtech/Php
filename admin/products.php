@@ -6,7 +6,7 @@ requireAdmin();
 $page_title = 'Quản lý sản phẩm';
 
 // Helper: upload file to local storage
-function upload_to_local($file, $upload_dir = 'uploads/products/') {
+function upload_to_local($file, $upload_dir = '../uploads/products/') { // changed: sửa đường dẫn
     if (!isset($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
         return false;
     }
@@ -217,7 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
     
-    redirect('products.php');
+    redirect('admin/products.php'); // changed: sửa đường dẫn để sau khi thao tác thêm/sửa/xóa thì load lại chính xác trang products
 }
 
 // Lấy danh sách sản phẩm

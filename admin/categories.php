@@ -25,10 +25,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_category'])) {
         }
     }
 
-    redirect('categories.php');
+    redirect('admin/categories.php'); // changed: sửa đường dẫn để sau khi thực hiện chức năng create, trang sẽ load lại chính xác     
 }
 
 // Handle update
+// đang được phát triển
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_category'])) {
     $id = (int)$_POST['category_id'];
     $name = sanitize($_POST['name'] ?? '');
@@ -49,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_category'])) {
         }
     }
 
-    redirect('categories.php');
+   redirect('admin/categories.php'); // changed: sửa đường dẫn để sau khi thực hiện chức năng create, trang sẽ load lại chính xác   
 }
 
 // Handle delete
@@ -64,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_id'])) {
         $_SESSION['error'] = 'Có lỗi xảy ra khi xóa danh mục.';
     }
 
-    redirect('categories.php');
+    redirect('admin/categories.php'); // changed: sửa đường dẫn để sau khi thực hiện chức năng create, trang sẽ load lại chính xác   
 }
 
 // Fetch categories (flat list)

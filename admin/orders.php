@@ -43,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
         $_SESSION['error'] = 'ID đơn hàng không hợp lệ';
     }
 
-    redirect('orders.php');
+    redirect('admin/orders.php'); //changed: sửa lại đường dẫn để trang orders có thể reload 1 cách chính xác
 }
 
 // Pagination & filters

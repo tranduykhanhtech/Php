@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_user'])) {
         }
     }
 
-    redirect('customers.php');
+    redirect('admin/customers.php'); // changed: Sửa lại đường dẫn để load lại chính xác với yêu cầu
 }
 
 // Handle delete
@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_user'])) {
         $_SESSION['error'] = 'Có lỗi khi xóa người dùng.';
     }
 
-    redirect('customers.php');
+    redirect('admin/customers.php'); // changed: Sửa lại đường dẫn để load lại chính xác với yêu cầu
 }
 
 // Handle suspend/unlock/lock actions
@@ -72,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['suspend_user'])) {
         $stmt->execute([$until, $id]);
         $_SESSION['success'] = 'Đã đình chỉ tài khoản.';
     }
-    redirect('customers.php');
+    redirect('admin/customers.php');// changed: Sửa lại đường dẫn để load lại chính xác với yêu cầu
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['lock_user'])) {
@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['lock_user'])) {
         $stmt->execute([$id]);
         $_SESSION['success'] = 'Tài khoản đã bị khóa vĩnh viễn.';
     }
-    redirect('customers.php');
+    redirect('admin/customers.php');// changed: Sửa lại đường dẫn để load lại chính xác với yêu cầu
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unlock_user'])) {
@@ -92,7 +92,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unlock_user'])) {
         $stmt->execute([$id]);
         $_SESSION['success'] = 'Đã mở khóa tài khoản.';
     }
-    redirect('customers.php');
+    redirect('admin/customers.php');// changed: Sửa lại đường dẫn để load lại chính xác với yêu cầu
 }
 
 // Pagination

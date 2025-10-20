@@ -32,7 +32,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         } catch (Exception $e) {
             $_SESSION['error'] = 'Lỗi: ' . $e->getMessage();
         }
-    } elseif ($_POST['action'] == 'toggle') {
+    } 
+    elseif ($_POST['action'] == 'toggle') {
         $id = intval($_POST['id']);
         $is_active = intval($_POST['is_active']);
         
@@ -40,7 +41,49 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
         $stmt->execute([$is_active, $id]);
         $_SESSION['success'] = 'Cập nhật trạng thái voucher thành công';
     }
-    redirect('vouchers.php');
+    elseif ($_POST['action'] == 'delete'){ // changed: thêm chức năng xóa voucher
+        $id = intval($_POST['id']);
+        try {
+            $stmt = $pdo->prepare("DELETE FROM vouchers WHERE id = ?");
+            $stmt->execute([$id]);
+            $_SESSION['success'] = 'Xóa voucher thành công';
+        } 
+        catch (Exception $e) {
+            $_SESSION['error'] = 'Lỗi: ' . $e->getMessage();
+        }
+    }
+    elseif ($_POST['action'] == 'edit') {
+        $id = intval($_POST['id']);
+        $code = sanitize($_POST['code']);
+        $name = sanitize($_POST['name']);
+        $description = sanitize($_POST['description']);
+        $type = $_POST['type'];
+        $value = floatval($_POST['value']);
+        $min_order_amount = floatval($_POST['min_order_amount']);
+        $max_discount = !empty($_POST['max_discount']) ? floatval($_POST['max_discount']) : null;
+        $usage_limit = !empty($_POST['usage_limit']) ? intval($_POST['usage_limit']) : null;
+        $starts_at = !empty($_POST['starts_at']) ? $_POST['starts_at'] : null;
+        $expires_at = !empty($_POST['expires_at']) ? $_POST['expires_at'] : null;
+
+        try {
+            $stmt = $pdo->prepare("
+                UPDATE vouchers
+                SET code = ?, name = ?, description = ?, type = ?, value = ?, min_order_amount = ?, 
+                    max_discount = ?, usage_limit = ?, starts_at = ?, expires_at = ?
+                WHERE id = ?
+            ");
+            $stmt->execute([
+                $code, $name, $description, $type, $value, $min_order_amount,
+                $max_discount, $usage_limit, $starts_at, $expires_at, $id
+            ]);
+            $_SESSION['success'] = 'Cập nhật voucher thành công';
+        } catch (Exception $e) {
+            $_SESSION['error'] = 'Lỗi: ' . $e->getMessage();
+        }
+        redirect('admin/vouchers.php');
+    }
+
+    redirect('admin/vouchers.php');
 }
 
 // Lấy danh sách voucher
@@ -138,8 +181,8 @@ include '../includes/header.php';
                             <?php endif; ?>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <button onclick="editVoucher(<?php echo htmlspecialchars(json_encode($voucher)); ?>)"
-                                    class="text-indigo-600 hover:text-indigo-900 mr-3">
+                            <button class="text-indigo-600 hover:text-indigo-900 mr-3 edit-btn" 
+                                    data-voucher='<?php echo json_encode($voucher, JSON_HEX_APOS | JSON_HEX_QUOT); ?>'>
                                 <i class="fas fa-edit"></i>
                             </button>
                             <button onclick="deleteVoucher(<?php echo $voucher['id']; ?>)"
@@ -156,108 +199,167 @@ include '../includes/header.php';
 </div>
 
 <!-- Add Voucher Modal -->
-<div id="addModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
-    <div class="flex items-center justify-center min-h-screen p-4">
-        <div class="bg-white rounded-lg shadow-xl max-w-md w-full">
-            <form method="POST">
-                <input type="hidden" name="action" value="add">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 class="text-lg font-medium text-gray-900">Thêm Voucher Mới</h3>
+<div id="addModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50 flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <form method="POST" class="flex flex-col h-full">
+            <!-- hidden fields -->
+            <input type="hidden" name="action" id="form_action" value="add">
+            <input type="hidden" name="id" id="voucher_id" value="">
+
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
+                <h3 class="text-lg font-medium text-gray-900">Thêm Voucher Mới</h3>
+            </div>
+
+            <!-- Form body -->
+            <div class="px-6 py-4 space-y-4 overflow-y-auto">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Mã voucher *</label>
+                    <input type="text" name="code" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
                 </div>
-                <div class="px-6 py-4 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Tên voucher *</label>
+                    <input type="text" name="name" required
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
+                    <textarea name="description" rows="2"
+                              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Mã voucher *</label>
-                        <input type="text" name="code" required
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Loại *</label>
+                        <select name="type" required
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="percentage">Phần trăm</option>
+                            <option value="fixed">Cố định</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Giá trị *</label>
+                        <input type="number" name="value" step="0.01" required
                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Tên voucher *</label>
-                        <input type="text" name="name" required
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Mô tả</label>
-                        <textarea name="description" rows="2"
-                                  class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary"></textarea>
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Loại *</label>
-                            <select name="type" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                                <option value="percentage">Phần trăm</option>
-                                <option value="fixed">Cố định</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Giá trị *</label>
-                            <input type="number" name="value" step="0.01" required
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                        </div>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Đơn hàng tối thiểu (VNĐ)</label>
-                        <input type="number" name="min_order_amount" value="0" step="1000"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Giảm tối đa (VNĐ)</label>
-                        <input type="number" name="max_discount" step="1000"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Giới hạn sử dụng</label>
-                        <input type="number" name="usage_limit" min="1"
-                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                    </div>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Bắt đầu</label>
-                            <input type="datetime-local" name="starts_at"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Kết thúc</label>
-                            <input type="datetime-local" name="expires_at"
-                                   class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
-                        </div>
                     </div>
                 </div>
-                <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
-                    <button type="button" onclick="closeAddModal()"
-                            class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
-                        Hủy
-                    </button>
-                    <button type="submit"
-                            class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary-dark">
-                        Thêm
-                    </button>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Đơn hàng tối thiểu (VNĐ)</label>
+                    <input type="number" name="min_order_amount" value="0" step="1000"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
                 </div>
-            </form>
-        </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Giảm tối đa (VNĐ)</label>
+                    <input type="number" name="max_discount" step="1000"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Giới hạn sử dụng</label>
+                    <input type="number" name="usage_limit" min="1"
+                           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Bắt đầu</label>
+                        <input type="datetime-local" name="starts_at"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Kết thúc</label>
+                        <input type="datetime-local" name="expires_at"
+                               class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="px-6 py-4 bg-gray-50 flex justify-end space-x-3 sticky bottom-0">
+                <button type="button" onclick="closeAddModal()"
+                        class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+                    Hủy
+                </button>
+                <button type="submit" id="submitBtn"
+                        class="px-4 py-2 text-sm font-medium text-white bg-primary rounded-md hover:bg-primary-dark">
+                    Thêm
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
+
 <script>
-function openAddModal() {
+function openAddModal() { //changed: chỉnh sửa hàm openAddModal() để form linh động hơn (vừa dùng cho thêm, vừa cho chỉnh sửa)
     document.getElementById('addModal').classList.remove('hidden');
+    document.querySelector('#addModal h3').textContent = 'Thêm Voucher Mới';
+    document.getElementById('submitBtn').textContent = 'Thêm';
+    document.getElementById('form_action').value = 'add';
+    document.getElementById('voucher_id').value = '';
+
+    // reset tất cả input
+    document.querySelector('input[name="code"]').value = '';
+    document.querySelector('input[name="name"]').value = '';
+    document.querySelector('textarea[name="description"]').value = '';
+    document.querySelector('select[name="type"]').value = 'percentage';
+    document.querySelector('input[name="value"]').value = '';
+    document.querySelector('input[name="min_order_amount"]').value = '0';
+    document.querySelector('input[name="max_discount"]').value = '';
+    document.querySelector('input[name="usage_limit"]').value = '';
+    document.querySelector('input[name="starts_at"]').value = '';
+    document.querySelector('input[name="expires_at"]').value = '';
 }
 
 function closeAddModal() {
     document.getElementById('addModal').classList.add('hidden');
 }
 
-function editVoucher(voucher) {
-    // TODO: Implement edit functionality
-    alert('Chức năng chỉnh sửa đang được phát triển');
+function editVoucher(voucher) { //changed: phát triển chức năng thêm voucher
+    document.getElementById('addModal').classList.remove('hidden');
+    document.querySelector('#addModal h3').textContent = 'Chỉnh sửa Voucher';
+
+    document.getElementById('form_action').value = 'edit';
+    document.getElementById('voucher_id').value = voucher.id;
+
+    document.querySelector('input[name="code"]').value = voucher.code;
+    document.querySelector('input[name="name"]').value = voucher.name;
+    document.querySelector('textarea[name="description"]').value = voucher.description || '';
+    document.querySelector('select[name="type"]').value = voucher.type;
+    document.querySelector('input[name="value"]').value = voucher.value;
+    document.querySelector('input[name="min_order_amount"]').value = voucher.min_order_amount;
+    document.querySelector('input[name="max_discount"]').value = voucher.max_discount || '';
+    document.querySelector('input[name="usage_limit"]').value = voucher.usage_limit || '';
+
+    document.querySelector('input[name="starts_at"]').value = voucher.starts_at ? voucher.starts_at.replace(' ', 'T') : '';
+    document.querySelector('input[name="expires_at"]').value = voucher.expires_at ? voucher.expires_at.replace(' ', 'T') : '';
+
+    // đổi nút submit
+    document.getElementById('submitBtn').textContent = 'Cập nhật';
 }
 
-function deleteVoucher(id) {
+
+
+
+function deleteVoucher(id) { // changed: phát triển chức năng xóa voucher
     if (confirm('Bạn có chắc chắn muốn xóa voucher này?')) {
-        // TODO: Implement delete functionality
-        alert('Chức năng xóa đang được phát triển');
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'vouchers.php'; // file hiện tại xử lý
+        form.innerHTML = `
+            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="id" value="${id}">
+        `;
+        document.body.appendChild(form);
+        form.submit();       
     }
 }
+
+document.querySelectorAll('.edit-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const voucher = JSON.parse(this.dataset.voucher);
+        editVoucher(voucher);
+    });
+});
+
 </script>
 
 <?php include '../includes/footer.php'; ?>

@@ -7,8 +7,8 @@ $limit = 12;
 $offset = ($page - 1) * $limit;
 
 // Giới hạn độ dài query để tránh tấn công
-if (mb_strlen($query) > 100) {
-    $query = mb_substr($query, 0, 100);
+if ((function_exists('mb_strlen') ? mb_strlen($query, 'UTF-8') : strlen($query)) > 100) {
+    $query = function_exists('mb_substr') ? mb_substr($query, 0, 100, 'UTF-8') : substr($query, 0, 100);
 }
 
 $page_title = $query ? ('Tìm kiếm: ' . htmlspecialchars($query)) : 'Tìm kiếm sản phẩm';

@@ -4,23 +4,39 @@ require_once 'config/database.php';
 $page_title = 'Trang chủ';
 $page_description = 'Cửa hàng mỹ phẩm thiên nhiên chất lượng cao, an toàn cho sức khỏe và thân thiện với môi trường';
 
-// Lấy sản phẩm nổi bật
+// Lấy sản phẩm nổi bật (admin chọn), ưu tiên sản phẩm có doanh số cao gần đây
 $featured_products = $pdo->query("
-    SELECT p.*, c.name as category_name 
-    FROM products p 
-    LEFT JOIN categories c ON p.category_id = c.id 
+    SELECT p.*, c.name as category_name, COALESCE(s.total_qty, 0) AS total_qty
+    FROM products p
+    LEFT JOIN (
+        SELECT oi.product_id, SUM(oi.quantity) AS total_qty
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        WHERE o.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+          AND o.order_status IN ('processing','shipped','delivered')
+        GROUP BY oi.product_id
+    ) s ON s.product_id = p.id
+    LEFT JOIN categories c ON p.category_id = c.id
     WHERE p.is_featured = 1 AND p.is_active = 1 
-    ORDER BY p.created_at DESC 
+    ORDER BY s.total_qty DESC, p.created_at DESC 
     LIMIT 8
 ")->fetchAll();
 
-// Lấy sản phẩm bán chạy
+// Lấy sản phẩm bán chạy (xếp theo số lượng bán trong 30 ngày gần đây)
 $bestseller_products = $pdo->query("
-    SELECT p.*, c.name as category_name 
-    FROM products p 
-    LEFT JOIN categories c ON p.category_id = c.id 
-    WHERE p.is_bestseller = 1 AND p.is_active = 1 
-    ORDER BY p.created_at DESC 
+    SELECT p.*, c.name as category_name, COALESCE(s.total_qty, 0) AS total_qty
+    FROM products p
+    LEFT JOIN (
+        SELECT oi.product_id, SUM(oi.quantity) AS total_qty
+        FROM order_items oi
+        JOIN orders o ON o.id = oi.order_id
+        WHERE o.created_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+          AND o.order_status IN ('processing','shipped','delivered')
+        GROUP BY oi.product_id
+    ) s ON s.product_id = p.id
+    LEFT JOIN categories c ON p.category_id = c.id
+    WHERE p.is_active = 1
+    ORDER BY s.total_qty DESC, p.created_at DESC
     LIMIT 8
 ")->fetchAll();
 
@@ -274,7 +290,7 @@ include 'includes/header.php';
             <?php foreach ($recent_posts as $post): ?>
             <article class="bg-white rounded-xl shadow-md overflow-hidden card-hover">
                 <?php if ($post['featured_image']): ?>
-                <img src="<?php echo $post['featured_image']; ?>" alt="<?php echo htmlspecialchars($post['title']); ?>" 
+                <img src="/<?php echo $post['featured_image']; ?>" alt="<?php echo htmlspecialchars($post['title']); ?>" 
                      class="w-full h-48 object-cover">
                 <?php endif; ?>
                 <div class="p-6">

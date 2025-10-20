@@ -80,7 +80,7 @@ include 'includes/header.php';
         <!-- Featured Image -->
         <?php if ($post['featured_image']): ?>
         <div class="aspect-w-16 aspect-h-9">
-            <img src="<?php echo $post['featured_image']; ?>" alt="<?php echo htmlspecialchars($post['title']); ?>" 
+            <img src="/<?php echo $post['featured_image']; ?>" alt="<?php echo htmlspecialchars($post['title']); ?>" 
                  class="w-full h-64 md:h-96 object-cover">
         </div>
         <?php endif; ?>
@@ -178,7 +178,7 @@ include 'includes/header.php';
             <article class="bg-white rounded-xl shadow-md overflow-hidden card-hover">
                 <?php if ($related['featured_image']): ?>
                 <div class="aspect-w-16 aspect-h-9">
-                    <img src="<?php echo $related['featured_image']; ?>" alt="<?php echo htmlspecialchars($related['title']); ?>" 
+                    <img src="/<?php echo $related['featured_image']; ?>" alt="<?php echo htmlspecialchars($related['title']); ?>" 
                          class="w-full h-48 object-cover">
                 </div>
                 <?php endif; ?>

@@ -84,7 +84,7 @@ CREATE TABLE orders (
     total_amount DECIMAL(10,2) NOT NULL,
     shipping_fee DECIMAL(10,2) DEFAULT 0,
     discount_amount DECIMAL(10,2) DEFAULT 0,
-    payment_method ENUM('cod', 'bank_transfer', 'momo', 'vnpay') NOT NULL,
+    payment_method ENUM('cod', 'bank_transfer') NOT NULL,
     payment_status ENUM('pending', 'paid', 'failed', 'refunded') DEFAULT 'pending',
     order_status ENUM('pending', 'processing', 'shipped', 'delivered', 'cancelled') DEFAULT 'pending',
     notes TEXT,
@@ -104,6 +104,22 @@ CREATE TABLE order_items (
     total_price DECIMAL(10,2) NOT NULL,
     FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
     FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
+);
+
+-- Bảng giao dịch thanh toán (Payment Transactions)
+CREATE TABLE payment_transactions (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT NOT NULL,
+    transaction_code VARCHAR(50) UNIQUE NOT NULL,
+    amount DECIMAL(10,2) NOT NULL,
+    payment_method ENUM('cod', 'bank_transfer') NOT NULL,
+    transaction_note TEXT,
+    transaction_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    INDEX idx_order (order_id),
+    INDEX idx_transaction_code (transaction_code),
+    INDEX idx_transaction_date (transaction_date DESC)
 );
 
 -- Bảng bài viết/blog

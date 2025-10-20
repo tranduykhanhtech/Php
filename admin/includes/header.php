@@ -86,6 +86,11 @@
                     <i class="fas fa-ticket-alt mr-3"></i>
                     Voucher
                 </a>
+                
+                <a href="transactions.php" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 <?php echo basename($_SERVER['PHP_SELF']) == 'transactions.php' ? 'bg-primary bg-opacity-10 text-primary border-r-2 border-primary' : ''; ?>">
+                    <i class="fas fa-receipt mr-3"></i>
+                    Giao dịch
+                </a>
                 <!-- Bỏ chức năng cài đặt của admin -->
                 <!-- <a href="settings.php" class="flex items-center px-6 py-3 text-gray-700 hover:bg-gray-100 <?php echo basename($_SERVER['PHP_SELF']) == 'settings.php' ? 'bg-primary bg-opacity-10 text-primary border-r-2 border-primary' : ''; ?>">
                     <i class="fas fa-cog mr-3"></i>
@@ -114,7 +119,20 @@
                         <div class="relative">
                             <button id="adminMenuButton" aria-haspopup="true" aria-expanded="false" class="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-primary rounded px-2 py-1">
                                 <!-- changed: đổi dịch vụ mới -->
-                                <img src="https://dummyimage.com/32x32/cccccc/000000.png&text=<?php echo urlencode(strtoupper(mb_substr($_SESSION['user_name'], 0, 1, 'UTF-8'))); ?>" 
+                                <?php
+                                    $name = isset($_SESSION['user_name']) ? (string)$_SESSION['user_name'] : '';
+                                    if (function_exists('mb_substr')) {
+                                        $initial = mb_substr($name, 0, 1, 'UTF-8');
+                                    } else {
+                                        $initial = substr($name, 0, 1);
+                                    }
+                                    if (function_exists('mb_strtoupper')) {
+                                        $initial = mb_strtoupper($initial, 'UTF-8');
+                                    } else {
+                                        $initial = strtoupper($initial);
+                                    }
+                                ?>
+                                <img src="https://dummyimage.com/32x32/cccccc/000000.png&text=<?php echo urlencode($initial); ?>" 
                                     class="w-8 h-8 rounded-full bg-gray-200">
                                 <span><?php echo $_SESSION['user_name']; ?></span>
                                 <i class="fas fa-chevron-down text-xs ml-1"></i>

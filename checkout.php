@@ -22,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $payment_method = $_POST['payment_method'];
     $notes = sanitize($_POST['notes']);
     $voucher_code = isset($_POST['voucher_code']) ? sanitize($_POST['voucher_code']) : '';
+    $transfer_code = isset($_POST['transfer_code']) ? sanitize($_POST['transfer_code']) : '';
     
     // Validation
     if (empty($customer_name) || empty($customer_email) || empty($customer_phone) || empty($customer_address)) {
@@ -164,6 +165,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $update_voucher->execute([$voucher_id]);
             }
             
+            // Tạo payment transaction (nếu là bank_transfer)
+            if ($payment_method === 'bank_transfer') {
+                // Use transfer_code from form if available, otherwise generate one
+                if (empty($transfer_code)) {
+                    $transfer_code = 'TXN' . date('YmdHis') . str_pad(rand(1, 999), 3, '0', STR_PAD_LEFT);
+                }
+                
+                // Try to insert into payment_transactions if table exists
+                try {
+                    $txn_stmt = $pdo->prepare("
+                        INSERT INTO payment_transactions (order_id, transaction_code, amount, payment_method, transaction_note, transaction_date)
+                        VALUES (?, ?, ?, ?, ?, NOW())
+                    ");
+                    $txn_stmt->execute([
+                        $order_id,
+                        $transfer_code, // Use the code from form
+                        $total_amount,
+                        $payment_method,
+                        $transfer_code // Also save as transaction note for customer reference
+                    ]);
+                } catch (PDOException $e) {
+                    // Table doesn't exist yet, skip transaction logging
+                    // Order will still be created successfully
+                }
+            }
+            
             // Xóa giỏ hàng
             $stmt = $pdo->prepare("DELETE FROM cart WHERE user_id = ?");
             $stmt->execute([$_SESSION['user_id']]);
@@ -243,8 +270,9 @@ include 'includes/header.php';
 
     <h1 class="text-3xl font-bold text-gray-900 mb-8">Thanh toán</h1>
 
-    <form method="POST" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <form method="POST" class="grid grid-cols-1 lg:grid-cols-3 gap-8" id="checkoutForm">
         <?php echo csrfField(); ?>
+        <input type="hidden" name="transfer_code" id="transfer_code_input" value="">
         <!-- Checkout Form -->
         <div class="lg:col-span-2 space-y-8">
             <!-- Customer Information -->
@@ -321,7 +349,7 @@ include 'includes/header.php';
                 <div class="space-y-4">
                     <label class="flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
                         <input type="radio" name="payment_method" value="cod" checked
-                               class="h-4 w-4 text-primary focus:ring-primary border-gray-300">
+                               class="h-4 w-4 text-primary focus:ring-primary border-gray-300" onchange="toggleBankInfo()">
                         <div class="ml-3">
                             <div class="flex items-center">
                                 <i class="fas fa-money-bill-wave text-green-600 mr-2"></i>
@@ -333,7 +361,7 @@ include 'includes/header.php';
                     
                     <label class="flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
                         <input type="radio" name="payment_method" value="bank_transfer"
-                               class="h-4 w-4 text-primary focus:ring-primary border-gray-300">
+                               class="h-4 w-4 text-primary focus:ring-primary border-gray-300" onchange="toggleBankInfo()">
                         <div class="ml-3">
                             <div class="flex items-center">
                                 <i class="fas fa-university text-blue-600 mr-2"></i>
@@ -343,29 +371,29 @@ include 'includes/header.php';
                         </div>
                     </label>
                     
-                    <label class="flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
-                        <input type="radio" name="payment_method" value="momo"
-                               class="h-4 w-4 text-primary focus:ring-primary border-gray-300">
-                        <div class="ml-3">
-                            <div class="flex items-center">
-                                <i class="fas fa-mobile-alt text-pink-600 mr-2"></i>
-                                <span class="font-medium">Ví MoMo</span>
-                            </div>
-                            <p class="text-sm text-gray-500">Thanh toán qua ví điện tử MoMo</p>
+                    <!-- Bank Transfer Info (Hidden by default) -->
+                    <div id="bank_transfer_info" class="hidden p-6 bg-blue-50 border-2 border-blue-200 rounded-lg">
+                        <h3 class="font-semibold text-blue-900 mb-4 flex items-center">
+                            <i class="fas fa-info-circle mr-2"></i>Thông tin chuyển khoản
+                        </h3>
+                        
+                        <div class="mb-4">
+                            <img src="/img/payment.jpg" alt="QR Code thanh toán" class="w-full max-w-md mx-auto rounded-lg shadow-md" 
+                                 onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'400\' height=\'300\'%3E%3Crect fill=\'%23ddd\' width=\'400\' height=\'300\'/%3E%3Ctext fill=\'%23999\' x=\'50%25\' y=\'50%25\' dominant-baseline=\'middle\' text-anchor=\'middle\' font-family=\'sans-serif\' font-size=\'18\'%3EKhông tải được ảnh%3C/text%3E%3C/svg%3E';">
                         </div>
-                    </label>
-                    
-                    <label class="flex items-center p-4 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
-                        <input type="radio" name="payment_method" value="vnpay"
-                               class="h-4 w-4 text-primary focus:ring-primary border-gray-300">
-                        <div class="ml-3">
-                            <div class="flex items-center">
-                                <i class="fas fa-credit-card text-blue-600 mr-2"></i>
-                                <span class="font-medium">VNPay</span>
-                            </div>
-                            <p class="text-sm text-gray-500">Thanh toán qua VNPay</p>
+                        
+                        <div class="bg-white p-4 rounded-lg space-y-2 text-sm">
+                            <p><strong>Ngân hàng:</strong> Techcombank</p>
+                            <p><strong>Số tài khoản:</strong> 19039760648013</p>
+                            <p><strong>Chủ tài khoản:</strong> Trần Duy Khánh</p>
+                            <p><strong>Nội dung:</strong> <span class="text-red-600 font-mono font-bold" id="transfer_note">Đang tạo mã...</span></p>
                         </div>
-                    </label>
+                        
+                        <p class="text-xs text-gray-600 mt-4">
+                            <i class="fas fa-exclamation-triangle text-yellow-600 mr-1"></i>
+                            Sau khi chuyển khoản, vui lòng lưu lại mã giao dịch để admin xác nhận đơn hàng.
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -525,6 +553,80 @@ document.addEventListener('DOMContentLoaded', function() {
     function formatPrice(price) {
         return new Intl.NumberFormat('vi-VN').format(price) + ' VNĐ';
     }
+});
+
+// Toggle bank transfer info (global function for inline handlers)
+function toggleBankInfo() {
+    const bankTransfer = document.querySelector('input[value="bank_transfer"]');
+    const bankInfo = document.getElementById('bank_transfer_info');
+    
+    if (bankTransfer && bankTransfer.checked) {
+        bankInfo.classList.remove('hidden');
+        generateTransferCode(); // Generate code when showing bank info
+    } else {
+        bankInfo.classList.add('hidden');
+    }
+}
+
+// Generate unique transfer code
+function generateTransferCode() {
+    const customerName = document.getElementById('customer_name').value || '';
+    const customerEmail = document.getElementById('customer_email').value || '';
+    const totalAmount = document.getElementById('total_amount').textContent.replace(/[^\d]/g, '') || '0';
+    
+    // Create hash from customer info
+    const baseString = customerName + customerEmail + totalAmount + Date.now();
+    
+    // Simple hash function to create 20-character code
+    let hash = 0;
+    for (let i = 0; i < baseString.length; i++) {
+        const char = baseString.charCodeAt(i);
+        hash = ((hash << 5) - hash) + char;
+        hash = hash & hash; // Convert to 32bit integer
+    }
+    
+    // Generate 20-character alphanumeric code
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Removed confusing chars
+    let code = 'GS'; // Prefix
+    
+    // Use hash and random to generate code
+    const timestamp = Date.now().toString(36).toUpperCase();
+    const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const hashPart = Math.abs(hash).toString(36).substring(0, 6).toUpperCase();
+    
+    code = (code + timestamp + randomPart + hashPart).substring(0, 20).toUpperCase();
+    
+    // Pad to exactly 20 characters if needed
+    while (code.length < 20) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    
+    // Display and store the code
+    document.getElementById('transfer_note').textContent = code;
+    document.getElementById('transfer_code_input').value = code;
+    
+    return code;
+}
+
+// Generate code when page loads (for bank_transfer pre-selected)
+document.addEventListener('DOMContentLoaded', function() {
+    const bankTransfer = document.querySelector('input[value="bank_transfer"]');
+    if (bankTransfer && bankTransfer.checked) {
+        generateTransferCode();
+    }
+    
+    // Regenerate when customer info changes
+    ['customer_name', 'customer_email'].forEach(id => {
+        const elem = document.getElementById(id);
+        if (elem) {
+            elem.addEventListener('change', function() {
+                const bankTransfer = document.querySelector('input[value="bank_transfer"]');
+                if (bankTransfer && bankTransfer.checked) {
+                    generateTransferCode();
+                }
+            });
+        }
+    });
 });
 </script>
 

@@ -143,9 +143,7 @@ include 'includes/header.php';
                                 <?php
                                 $payment_text = [
                                     'cod' => 'Thanh toán khi nhận hàng',
-                                    'bank_transfer' => 'Chuyển khoản ngân hàng',
-                                    'momo' => 'Ví MoMo',
-                                    'vnpay' => 'VNPay'
+                                    'bank_transfer' => 'Chuyển khoản ngân hàng'
                                 ];
                                 echo $payment_text[$order['payment_method']] ?? $order['payment_method'];
                                 ?>

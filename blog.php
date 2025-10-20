@@ -60,15 +60,15 @@ $categories = $pdo->query("
     ORDER BY count DESC
 ")->fetchAll();
 
-// Lấy bài viết nổi bật
-$featured_posts = $pdo->query("
+// Lấy bài viết nổi bật (chỉ 1 bài có lượt xem cao nhất)
+$featured_post = $pdo->query("
     SELECT p.*, u.full_name as author_name 
     FROM posts p 
     LEFT JOIN users u ON p.author_id = u.id 
     WHERE p.is_published = 1 
     ORDER BY p.view_count DESC, p.created_at DESC 
-    LIMIT 3
-")->fetchAll();
+    LIMIT 1
+")->fetch();
 
 include 'includes/header.php';
 ?>
@@ -135,29 +135,43 @@ include 'includes/header.php';
                     </ul>
                 </div>
 
-                <!-- Featured Posts -->
-                <?php if (!empty($featured_posts)): ?>
+                <!-- Featured Post -->
+                <?php if ($featured_post): ?>
                 <div class="bg-white rounded-lg shadow-md p-6">
-                    <h3 class="font-semibold text-gray-900 mb-4">Bài viết nổi bật</h3>
-                    <div class="space-y-4">
-                        <?php foreach ($featured_posts as $post): ?>
-                        <div class="flex space-x-3">
-                            <?php if ($post['featured_image']): ?>
-                            <img src="<?php echo $post['featured_image']; ?>" alt="<?php echo htmlspecialchars($post['title']); ?>" 
-                                 class="w-16 h-16 object-cover rounded">
-                            <?php endif; ?>
-                            <div class="flex-1 min-w-0">
-                                <h4 class="text-sm font-medium text-gray-900 line-clamp-2">
-                                    <a href="post.php?id=<?php echo $post['id']; ?>" class="hover:text-primary">
-                                        <?php echo htmlspecialchars($post['title']); ?>
-                                    </a>
-                                </h4>
-                                <p class="text-xs text-gray-500 mt-1">
-                                    <i class="fas fa-eye mr-1"></i><?php echo $post['view_count']; ?> lượt xem
-                                </p>
+                    <h3 class="font-semibold text-gray-900 mb-4 flex items-center">
+                        <i class="fas fa-star text-yellow-400 mr-2"></i>
+                        Bài viết nổi bật
+                    </h3>
+                    <div class="flex space-x-3">
+                        <!-- Image -->
+                        <div class="w-20 h-20 flex-shrink-0">
+                            <?php if ($featured_post['featured_image']): ?>
+                            <img src="/<?php echo $featured_post['featured_image']; ?>" alt="<?php echo htmlspecialchars($featured_post['title']); ?>" 
+                                 class="w-full h-full object-cover rounded-lg">
+                            <?php else: ?>
+                            <div class="w-full h-full bg-gradient-to-br from-primary to-green-600 rounded-lg flex items-center justify-center">
+                                <i class="fas fa-image text-white text-2xl"></i>
                             </div>
+                            <?php endif; ?>
                         </div>
-                        <?php endforeach; ?>
+                        <!-- Content -->
+                        <div class="flex-1 min-w-0 overflow-hidden">
+                            <h4 class="text-base font-semibold text-gray-900 line-clamp-2 mb-2 break-words">
+                                <a href="post.php?id=<?php echo $featured_post['id']; ?>" class="hover:text-primary transition-colors">
+                                    <?php echo htmlspecialchars($featured_post['title']); ?>
+                                </a>
+                            </h4>
+                            <p class="text-xs text-gray-500 mb-2">
+                                <i class="fas fa-user mr-1"></i><?php echo htmlspecialchars($featured_post['author_name']); ?>
+                                <span class="mx-2">•</span>
+                                <i class="fas fa-eye mr-1"></i><?php echo $featured_post['view_count']; ?> lượt xem
+                            </p>
+                            <?php if ($featured_post['excerpt']): ?>
+                            <p class="text-xs text-gray-600 line-clamp-2">
+                                <?php echo htmlspecialchars($featured_post['excerpt']); ?>
+                            </p>
+                            <?php endif; ?>
+                        </div>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -204,7 +218,7 @@ include 'includes/header.php';
                     <article class="bg-white rounded-xl shadow-md overflow-hidden card-hover">
                         <?php if ($post['featured_image']): ?>
                         <div class="aspect-w-16 aspect-h-9">
-                            <img src="<?php echo $post['featured_image']; ?>" alt="<?php echo htmlspecialchars($post['title']); ?>" 
+                            <img src="/<?php echo $post['featured_image']; ?>" alt="<?php echo htmlspecialchars($post['title']); ?>" 
                                  class="w-full h-48 object-cover">
                         </div>
                         <?php endif; ?>
@@ -292,6 +306,10 @@ include 'includes/header.php';
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    max-height: 2.8em;
+    line-height: 1.4em;
 }
 
 .line-clamp-3 {
@@ -299,6 +317,8 @@ include 'includes/header.php';
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 </style>
 

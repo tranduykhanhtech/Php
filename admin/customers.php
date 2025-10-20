@@ -70,9 +70,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['suspend_user'])) {
         $until = $days > 0 ? date('Y-m-d H:i:s', strtotime("+$days days")) : date('Y-m-d H:i:s', strtotime('+100 years'));
         $stmt = $pdo->prepare("UPDATE users SET suspension_until = ?, updated_at = NOW() WHERE id = ?");
         $stmt->execute([$until, $id]);
-        $_SESSION['success'] = 'Đã đình chỉ tài khoản.';
+        // Force signout: xóa session của user
+    $delToken = $pdo->prepare("DELETE FROM remember_tokens WHERE user_id = ?");
+    $delToken->execute([$id]);
+        $_SESSION['success'] = 'Đã đình chỉ tài khoản và đăng xuất người dùng.';
     }
-    redirect('admin/customers.php');// changed: Sửa lại đường dẫn để load lại chính xác với yêu cầu
+    redirect('admin/customers.php');
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['lock_user'])) {
@@ -80,9 +83,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['lock_user'])) {
     if ($id > 0) {
         $stmt = $pdo->prepare("UPDATE users SET is_locked = 1, updated_at = NOW() WHERE id = ?");
         $stmt->execute([$id]);
-        $_SESSION['success'] = 'Tài khoản đã bị khóa vĩnh viễn.';
+        // Force signout: xóa session của user
+    $delToken = $pdo->prepare("DELETE FROM remember_tokens WHERE user_id = ?");
+    $delToken->execute([$id]);
+        $_SESSION['success'] = 'Tài khoản đã bị khóa vĩnh viễn và đăng xuất người dùng.';
     }
-    redirect('admin/customers.php');// changed: Sửa lại đường dẫn để load lại chính xác với yêu cầu
+    redirect('admin/customers.php');
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['unlock_user'])) {
@@ -101,11 +107,13 @@ $limit = 20;
 $offset = ($page - 1) * $limit;
 
 try {
-    $usersStmt = $pdo->prepare("SELECT id, username, email, full_name, phone, address, role, created_at, suspension_until, is_locked FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?");
-    $usersStmt->execute([$limit, $offset]);
-    $users = $usersStmt->fetchAll();
+    $usersStmt = $pdo->prepare("SELECT id, username, email, full_name, phone, address, role, created_at, suspension_until, is_locked FROM users WHERE role = 'customer' ORDER BY created_at DESC LIMIT :limit OFFSET :offset");
+    $usersStmt->bindValue(':limit', (int)$limit, PDO::PARAM_INT);
+    $usersStmt->bindValue(':offset', (int)$offset, PDO::PARAM_INT);
+    $usersStmt->execute();
+    $users = $usersStmt->fetchAll(PDO::FETCH_ASSOC);
 
-    $countStmt = $pdo->query("SELECT COUNT(*) FROM users");
+    $countStmt = $pdo->query("SELECT COUNT(*) FROM users WHERE role = 'customer'");
     $total = (int)$countStmt->fetchColumn();
     $total_pages = max(1, (int)ceil($total / $limit));
 } catch (Exception $e) {
@@ -232,9 +240,9 @@ include 'includes/header.php';
                         <input type="number" name="suspend_days" id="u_suspend_days" class="w-full px-3 py-2 border rounded" min="0" value="0">
                     </div>
                     <div class="flex space-x-2">
-                        <button type="submit" name="suspend_user" class="px-4 py-2 bg-yellow-600 text-white rounded">Đình chỉ</button>
-                        <button type="submit" name="lock_user" class="px-4 py-2 bg-red-600 text-white rounded">Khóa vĩnh viễn</button>
-                        <button type="submit" name="unlock_user" class="px-4 py-2 bg-green-600 text-white rounded">Mở khóa</button>
+                        <button type="submit" name="suspend_user" value="" id="btn_suspend" class="px-4 py-2 bg-yellow-600 text-white rounded">Đình chỉ</button>
+                        <button type="submit" name="lock_user" value="" id="btn_lock" class="px-4 py-2 bg-red-600 text-white rounded">Khóa vĩnh viễn</button>
+                        <button type="submit" name="unlock_user" value="" id="btn_unlock" class="px-4 py-2 bg-green-600 text-white rounded">Mở khóa</button>
                     </div>
                 </div>
                 <div class="px-6 py-4 border-t flex justify-end space-x-2">
@@ -255,10 +263,12 @@ function openEdit(e, id) {
     document.getElementById('u_full_name').value = cells[1].innerText.trim();
     document.getElementById('u_email').value = cells[2].innerText.trim();
     document.getElementById('u_phone').value = cells[3].innerText.trim();
-    // address is not shown in table; leave blank
     document.getElementById('u_address').value = '';
     document.getElementById('u_role').value = cells[4].innerText.trim();
-    // Attempt to parse suspension info from status cell if present
+    // Gán id user cho các nút thao tác
+    document.getElementById('btn_suspend').value = id;
+    document.getElementById('btn_lock').value = id;
+    document.getElementById('btn_unlock').value = id;
     try {
         const statusCell = cells[5].innerText.trim();
         const m = statusCell.match(/\d{2}\/\d{2}\/\d{4}/);

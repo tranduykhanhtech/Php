@@ -75,7 +75,10 @@ try {
         array_replace([
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false
+            PDO::ATTR_EMULATE_PREPARES => false,
+            PDO::ATTR_PERSISTENT => true, // Connection pooling
+            PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true, // Buffer queries
+            PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8mb4 COLLATE utf8mb4_unicode_ci" // Charset optimization
         ], $sslOptions)
     );
 } catch (PDOException $e) {
@@ -241,5 +244,44 @@ function timeAgo($datetime) {
     if ($time < 2592000) return floor($time/86400) . ' ngày trước';
     if ($time < 31536000) return floor($time/2592000) . ' tháng trước';
     return floor($time/31536000) . ' năm trước';
+}
+
+// --- Multibyte-safe string helpers (work without mbstring) --------------------
+if (!function_exists('str_len')) {
+    function str_len($str, $encoding = 'UTF-8') {
+        if (function_exists('mb_strlen')) return mb_strlen($str, $encoding);
+        return strlen($str);
+    }
+}
+
+if (!function_exists('str_sub')) {
+    function str_sub($str, $start, $length = null, $encoding = 'UTF-8') {
+        if (function_exists('mb_substr')) {
+            return $length === null ? mb_substr($str, $start, null, $encoding) : mb_substr($str, $start, $length, $encoding);
+        }
+        return $length === null ? substr($str, $start) : substr($str, $start, $length);
+    }
+}
+
+if (!function_exists('str_lower')) {
+    function str_lower($str, $encoding = 'UTF-8') {
+        if (function_exists('mb_strtolower')) return mb_strtolower($str, $encoding);
+        return strtolower($str);
+    }
+}
+
+if (!function_exists('str_upper')) {
+    function str_upper($str, $encoding = 'UTF-8') {
+        if (function_exists('mb_strtoupper')) return mb_strtoupper($str, $encoding);
+        return strtoupper($str);
+    }
+}
+
+if (!function_exists('initial_upper')) {
+    function initial_upper($name, $encoding = 'UTF-8') {
+        $name = (string)$name;
+        $initial = function_exists('mb_substr') ? mb_substr($name, 0, 1, $encoding) : substr($name, 0, 1);
+        return function_exists('mb_strtoupper') ? mb_strtoupper($initial, $encoding) : strtoupper($initial);
+    }
 }
 ?>

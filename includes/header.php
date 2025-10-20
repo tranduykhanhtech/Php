@@ -1,4 +1,4 @@
-<?php require_once 'config.php'; ?>
+<?php require_once __DIR__ . '/../config/database.php'; ?>
 
 <!DOCTYPE html>
 <html lang="vi">
@@ -29,11 +29,6 @@
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
-    <!-- In-page toast notifications (SSE) -->
-    <?php if (isLoggedIn()): ?>
-    <script src="/assets/js/browser-notification.js"></script>
-    <?php endif; ?>
     
     <!-- Custom CSS -->
     <style>

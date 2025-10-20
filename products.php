@@ -23,7 +23,7 @@ if ($category_id > 0) {
 }
 
 // Require at least 3 characters for free-text search to avoid expensive broad LIKE scans
-if (!empty($search) && mb_strlen($search) >= 3) {
+if (!empty($search) && ((function_exists('mb_strlen') ? mb_strlen($search, 'UTF-8') : strlen($search)) >= 3)) {
     $where_conditions[] = "(p.name LIKE ? OR p.short_description LIKE ?)";
     $search_term = "%$search%";
     $params[] = $search_term;
@@ -56,15 +56,36 @@ switch ($sort) {
 
 // Lấy sản phẩm
 // Select only needed columns to reduce payload (avoid selecting large text fields)
-$sql = "
-    SELECT p.id, p.name, p.price, p.sale_price, p.images, p.short_description, p.is_bestseller, p.category_id, p.created_at, p.stock_quantity,
-           c.name as category_name
-    FROM products p
-    LEFT JOIN categories c ON p.category_id = c.id
-    WHERE $where_clause
-    $order_clause
-    LIMIT $limit OFFSET $offset
-";
+if ($sort === 'bestseller') {
+    // Xếp theo số lượng bán (90 ngày gần đây) thay vì cờ is_bestseller
+    $sql = "
+        SELECT p.id, p.name, p.price, p.sale_price, p.images, p.short_description, p.is_bestseller, p.category_id, p.created_at, p.stock_quantity,
+               c.name as category_name, COALESCE(s.total_qty, 0) AS total_qty
+        FROM products p
+        LEFT JOIN (
+            SELECT oi.product_id, SUM(oi.quantity) AS total_qty
+            FROM order_items oi
+            JOIN orders o ON o.id = oi.order_id
+            WHERE o.created_at >= DATE_SUB(NOW(), INTERVAL 90 DAY)
+              AND o.order_status IN ('processing','shipped','delivered')
+            GROUP BY oi.product_id
+        ) s ON s.product_id = p.id
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE $where_clause
+        ORDER BY s.total_qty DESC, p.created_at DESC
+        LIMIT $limit OFFSET $offset
+    ";
+} else {
+    $sql = "
+        SELECT p.id, p.name, p.price, p.sale_price, p.images, p.short_description, p.is_bestseller, p.category_id, p.created_at, p.stock_quantity,
+               c.name as category_name
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE $where_clause
+        $order_clause
+        LIMIT $limit OFFSET $offset
+    ";
+}
 
 $stmt = $pdo->prepare($sql);
 $stmt->execute($params);

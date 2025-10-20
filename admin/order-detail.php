@@ -8,7 +8,7 @@ $order_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
 
 if ($order_id <= 0) {
     $_SESSION['error'] = 'ID đơn hàng không hợp lệ.';
-    redirect('orders.php');
+    redirect('admin/orders.php');
 }
 
 // Handle status update
@@ -46,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
         $_SESSION['error'] = 'Có lỗi xảy ra khi cập nhật.';
     }
 
-    redirect('order-detail.php?id=' . $oid);
+    redirect('admin/order-detail.php?id=' . $oid);
 }
 
 // Lấy thông tin đơn hàng
@@ -56,7 +56,7 @@ $order = $stmt->fetch();
 
 if (!$order) {
     $_SESSION['error'] = 'Không tìm thấy đơn hàng.';
-    redirect('orders.php');
+    redirect('admin/orders.php');
 }
 
 // Lấy items
